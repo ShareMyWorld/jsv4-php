@@ -125,5 +125,3 @@ if (count($failedTests) == 0) {
 		echo " |  ".str_replace("\n", "\n |  ", $failedTest)."\n";
 	}
 }
-
-?>

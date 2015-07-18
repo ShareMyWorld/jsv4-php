@@ -178,12 +178,12 @@ class SchemaStore {
 		if (isset($this->schemas[$url])) {
 			return $this->schemas[$url];
 		}
-		$urlParts = explode("#", $url);
+		$urlParts = explode('#', $url);
 		$baseUrl = array_shift($urlParts);
-		$fragment = urldecode(implode("#", $urlParts));
+		$fragment = urldecode(implode('#', $urlParts));
 		if (isset($this->schemas[$baseUrl])) {
 			$schema = $this->schemas[$baseUrl];
-			if ($schema && $fragment == "" || $fragment[0] == "/") {
+			if ($schema && $fragment == '' || $fragment[0] == '/') {
 				$schema = self::pointerGet($schema, $fragment);
 				$this->add($url, $schema);
 				return $schema;
@@ -192,4 +192,4 @@ class SchemaStore {
 	}
 }
 
-?>
+
