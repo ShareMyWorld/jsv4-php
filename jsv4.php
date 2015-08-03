@@ -178,7 +178,7 @@ class Jsv4 {
 			if ($types === $actualType || ($types === 'integer' && is_int($this->data))) {
 				return;
 			} 
-		} elseif (in_array($this->jsonType, $types)) {
+		} elseif (in_array($actualType, $types)) {
 			return;
 		}
 

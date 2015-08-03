@@ -31,16 +31,6 @@ class SchemaStore {
 		return $value;
 	}
 	
-	private static function isNumericArray($array) {
-		$count = count($array);
-		for ($i = 0; $i < $count; $i++) {
-			if (!isset($array[$i])) {
-				return FALSE;
-			}
-		}
-		return TRUE;
-	}
-	
 	private static function resolveUrl($base, $relative) {
 		if (parse_url($relative, PHP_URL_SCHEME) != '') {
 			// It's already absolute
@@ -108,12 +98,12 @@ class SchemaStore {
 
 	private $schemas = array();
 	private $refs = array();
-	
+
 	public function missing() {
 		return array_keys($this->refs);
 	}
 	
-	public function add($url, $schema, $trusted=FALSE) {
+	public function add($url, $schema, $trusted = FALSE, $normalized = FALSE) {
 		$urlParts = explode("#", $url);
 		$baseUrl = array_shift($urlParts);
 		$fragment = urldecode(implode("#", $urlParts));
@@ -125,9 +115,11 @@ class SchemaStore {
 		}
 
 		$this->schemas[$url] =& $schema;
-		$this->normalizeSchema($url, $schema, $trusted ? TRUE : $trustBase);
-		if ($fragment == "") {
-			$this->schemas[$baseUrl] = $schema;
+		if (!$normalized) {
+			$this->normalizeSchema($url, $schema, $trusted ? TRUE : $trustBase);
+		}
+		if (empty($this->schemas[$baseUrl]) && $fragment === '' && $url !== $baseUrl) {
+			$this->schemas[$baseUrl] =& $schema;
 		}
 		if (isset($this->refs[$baseUrl])) {
 			foreach ($this->refs[$baseUrl] as $fullUrl => $refSchemas) {
@@ -136,17 +128,27 @@ class SchemaStore {
 				}
 				unset($this->refs[$baseUrl][$fullUrl]);
 			}
-			if (count($this->refs[$baseUrl]) == 0) {
+			if (empty($this->refs[$baseUrl])) {
 				unset($this->refs[$baseUrl]);
 			}
 		}
+	}
+
+	/**
+	 * Adds a normalized schema.
+	 * CAUTION: No attempt is made to actually verify that the schema is normalized.
+	 * Make sure to only use this method with schemas previously retrieved with getNormalizedSchema()
+	 */
+	public function addNormalizedSchema($url, $schema) {
+		$this->add($url, $schema, TRUE, TRUE);
 	}
 	
 	private function normalizeSchema($url, &$schema, $trustPrefix = '') {
 		if (is_object($schema)) {
 			if (isset($schema->{'$ref'})) {
 				$refUrl = $schema->{'$ref'} = self::resolveUrl($url, $schema->{'$ref'});
-				if ($refSchema = $this->get($refUrl)) {
+				$refSchema = $this->get($refUrl);
+				if ($refSchema) {
 					$schema = $refSchema;
 					return;
 				} else {
@@ -194,21 +196,47 @@ class SchemaStore {
 		}
 	}
 	
-	public function get($url) {
+	public function get($url, $strict = FALSE) {
 		if (isset($this->schemas[$url])) {
 			return $this->schemas[$url];
 		}
 		$urlParts = explode('#', $url);
 		$baseUrl = array_shift($urlParts);
 		$fragment = urldecode(implode('#', $urlParts));
+		$schema = NULL;
+		
 		if (isset($this->schemas[$baseUrl])) {
 			$schema = $this->schemas[$baseUrl];
 			if ($schema && $fragment == '' || $fragment[0] == '/') {
-				$schema = self::pointerGet($schema, $fragment);
+				$schema = self::pointerGet($schema, $fragment, $strict);
 				$this->add($url, $schema);
-				return $schema;
 			}
 		}
+
+		if (empty($schema) && $strict) {
+			throw new Exception("Schema not found: $url");
+		}
+		
+		return $schema;
+	}
+
+	/**
+	 * Like get() but will throw an exception if not all its descendant refs have been resolved.
+	 *
+	 * @param string $url
+	 */
+	public function getNormalizedSchema($url) {
+		$schema = $this->get($url, TRUE);
+		if (isset($schema->id)) {
+			$baseUrl = $schema->id;
+		} else {
+			$urlParts = explode('#', $url);
+			$baseUrl = array_shift($urlParts);
+		}
+		if (!empty($this->refs[$baseUrl])) {
+			throw new Exception('Schema is not normalized. Missing: ' . json_encode($this->refs[$baseUrl]));
+		}
+		return $schema;
 	}
 
 }

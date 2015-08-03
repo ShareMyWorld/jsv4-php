@@ -19,8 +19,6 @@ function runJsonTest($key, $test) {
 			$result = Jsv4::validate($test->data, $test->schema);
 		} else if ($test->method == "isValid") {
 			$result = Jsv4::isValid($test->data, $test->schema);
-		} else if ($test->method == "coerce") {
-			$result = Jsv4::coerce($test->data, $test->schema);
 		} else {
 			$failedTests[$key][] = ("Unknown method: {$test->method}");
 			return;
