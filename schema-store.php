@@ -118,8 +118,11 @@ class SchemaStore {
 		$baseUrl = array_shift($urlParts);
 		$fragment = urldecode(implode("#", $urlParts));
 
-		$trustBase = explode("?", $baseUrl);
-		$trustBase = $trustBase[0];
+		$trustBase = NULL;
+		if (!$trusted) {
+			$trustBase = explode("?", $baseUrl);
+			$trustBase = $trustBase[0];
+		}
 
 		$this->schemas[$url] =& $schema;
 		$this->normalizeSchema($url, $schema, $trusted ? TRUE : $trustBase);
@@ -140,9 +143,6 @@ class SchemaStore {
 	}
 	
 	private function normalizeSchema($url, &$schema, $trustPrefix = '') {
-		if (is_array($schema) && !self::isNumericArray($schema)) {
-			$schema = (object)$schema;
-		}
 		if (is_object($schema)) {
 			if (isset($schema->{'$ref'})) {
 				$refUrl = $schema->{'$ref'} = self::resolveUrl($url, $schema->{'$ref'});
@@ -151,23 +151,43 @@ class SchemaStore {
 					return;
 				} else {
 					$urlParts = explode("#", $refUrl);
-					$baseUrl = array_shift($urlParts);
-					$fragment = urldecode(implode("#", $urlParts));
+					$baseUrl = $urlParts[0];
 					$this->refs[$baseUrl][$refUrl][] =& $schema;
 				}
-			} else if (isset($schema->id) && is_string($schema->id)) {
+			} elseif (isset($schema->id) && is_string($schema->id)) {
 				$schema->id = $url = self::resolveUrl($url, $schema->id);
-				$regex = '/^'.preg_quote($trustPrefix, '/').'(?:[#\/?].*)?$/';
-				if (($trustPrefix === TRUE || preg_match($regex, $schema->id)) && !isset($this->schemas[$schema->id])) {
-					$this->add($schema->id, $schema);
+				if (!isset($this->schemas[$schema->id])) {
+					if ($trustPrefix === TRUE) {
+						$this->add($schema->id, $schema);
+					} else {
+						$regex = '/^'.preg_quote($trustPrefix, '/').'(?:[#\/?].*)?$/';
+						if (preg_match($regex, $schema->id)) {
+							$this->add($schema->id, $schema);
+						}
+					}
 				}
 			}
 			foreach ($schema as $key => &$value) {
-				if ($key != "enum") {
-					self::normalizeSchema($url, $value, $trustPrefix);
+				if (!is_scalar($value)) {
+					switch ($key) {
+						case 'enum':
+						case 'type':
+						case 'default':
+						case 'required':
+							break;
+
+						case 'properties':
+							foreach ($value as $prop => &$propValue) {
+								self::normalizeSchema($url, $propValue, $trustPrefix);
+							}
+							break;
+
+						default:
+							self::normalizeSchema($url, $value, $trustPrefix);
+					}
 				}
 			}
-		} else if (is_array($schema)) {
+		} elseif (is_array($schema)) {
 			foreach ($schema as &$value) {
 				self::normalizeSchema($url, $value, $trustPrefix);
 			}
@@ -190,6 +210,7 @@ class SchemaStore {
 			}
 		}
 	}
+
 }
 
 

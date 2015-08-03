@@ -33,7 +33,7 @@ $schema = array(
 		"foo" => array('$ref' => "somewhere-else")
 	)
 );
-$store->add($urlBase."test-schema-2", $schema);
+$store->add($urlBase."test-schema-2", json_decode(json_encode($schema)));
 $schema = $store->get($urlBase."test-schema-2");
 if (!$schema->properties->foo->{'$ref'}) {
 	throw new Exception('$ref should still exist');
