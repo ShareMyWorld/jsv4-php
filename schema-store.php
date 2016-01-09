@@ -202,10 +202,10 @@ class SchemaStore {
 		}
 		$urlParts = explode('#', $url);
 		$baseUrl = array_shift($urlParts);
-		$fragment = urldecode(implode('#', $urlParts));
 		$schema = NULL;
 		
 		if (isset($this->schemas[$baseUrl])) {
+            $fragment = urldecode(implode('#', $urlParts));
 			$schema = $this->schemas[$baseUrl];
 			if ($schema && $fragment == '' || $fragment[0] == '/') {
 				$schema = self::pointerGet($schema, $fragment, $strict);
@@ -219,6 +219,10 @@ class SchemaStore {
 		
 		return $schema;
 	}
+
+    public function hasBaseSchema($baseUrl) {
+        return isset($this->schemas[$baseUrl]);
+    }
 
 	/**
 	 * Like get() but will throw an exception if not all its descendant refs have been resolved.
