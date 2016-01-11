@@ -102,6 +102,10 @@ class SchemaStore {
 	public function missing() {
 		return array_keys($this->refs);
 	}
+
+    public function getLoadedSchemaIds() {
+        return array_keys($this->schemas);
+    }
 	
 	public function add($url, $schema, $trusted = FALSE, $normalized = FALSE) {
 		$urlParts = explode("#", $url);
