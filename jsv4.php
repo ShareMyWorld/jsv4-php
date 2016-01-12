@@ -100,13 +100,39 @@ class Jsv4 {
 		return FALSE;
 	}
 
-	
+	/**
+     * @var mixed
+     */
 	private $data;
+
+    /**
+     * @var \stdClass
+     */
 	private $schema;
+
+    /**
+     * @var boolean
+     */
 	private $firstErrorOnly;
+
+    /**
+     * @var boolean
+     */
     private $associative;
+
+    /**
+     * @var array
+     */
 	private $options;
+
+    /**
+     * @var boolean
+     */
 	public $valid;
+
+    /**
+     * @var \Jsv4Error[]
+     */
 	public $errors;
 
     /**
@@ -534,9 +560,24 @@ class Jsv4 {
 }
 
 class Jsv4Error extends Exception {
+    /**
+     * @var int
+     */
 	public $code;
+
+    /**
+     * @var string
+     */
 	public $dataPath;
+
+    /**
+     * @var string
+     */
 	public $schemaPath;
+
+    /**
+     * @var string
+     */
 	public $message;
 
 	public function __construct($code, $dataPath, $schemaPath, $errorMessage, $subResults=NULL) {
