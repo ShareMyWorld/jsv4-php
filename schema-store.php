@@ -122,8 +122,8 @@ class SchemaStore {
 		if (!$normalized) {
 			$this->normalizeSchema($url, $schema, $trusted ? TRUE : $trustBase);
 		}
-		if (empty($this->schemas[$baseUrl]) && $fragment === '' && $url !== $baseUrl) {
-			$this->schemas[$baseUrl] =& $schema;
+		if ($fragment === '') {
+			$this->schemas[$baseUrl] = $schema;
 		}
 		if (isset($this->refs[$baseUrl])) {
 			foreach ($this->refs[$baseUrl] as $fullUrl => $refSchemas) {
@@ -151,8 +151,7 @@ class SchemaStore {
 		if (is_object($schema)) {
 			if (isset($schema->{'$ref'})) {
 				$refUrl = $schema->{'$ref'} = self::resolveUrl($url, $schema->{'$ref'});
-				$refSchema = $this->get($refUrl);
-				if ($refSchema) {
+				if ($refSchema = $this->get($refUrl)) {
 					$schema = $refSchema;
 					return;
 				} else {
@@ -162,35 +161,14 @@ class SchemaStore {
 				}
 			} elseif (isset($schema->id) && is_string($schema->id)) {
 				$schema->id = $url = self::resolveUrl($url, $schema->id);
-				if (!isset($this->schemas[$schema->id])) {
-					if ($trustPrefix === TRUE) {
-						$this->add($schema->id, $schema);
-					} else {
-						$regex = '/^'.preg_quote($trustPrefix, '/').'(?:[#\/?].*)?$/';
-						if (preg_match($regex, $schema->id)) {
-							$this->add($schema->id, $schema);
-						}
-					}
+				$regex = '/^'.preg_quote($trustPrefix, '/').'(?:[#\/?].*)?$/';
+				if (($trustPrefix === TRUE || preg_match($regex, $schema->id)) && !isset($this->schemas[$schema->id])) {
+					$this->add($schema->id, $schema);
 				}
 			}
 			foreach ($schema as $key => &$value) {
-				if (!is_scalar($value)) {
-					switch ($key) {
-						case 'enum':
-						case 'type':
-						case 'default':
-						case 'required':
-							break;
-
-						case 'properties':
-							foreach ($value as $prop => &$propValue) {
-								self::normalizeSchema($url, $propValue, $trustPrefix);
-							}
-							break;
-
-						default:
-							self::normalizeSchema($url, $value, $trustPrefix);
-					}
+				if ($key != 'enum' && !is_scalar($value)) {
+                    self::normalizeSchema($url, $value, $trustPrefix);
 				}
 			}
 		} elseif (is_array($schema)) {
@@ -210,9 +188,9 @@ class SchemaStore {
 		
 		if (isset($this->schemas[$baseUrl])) {
             $fragment = urldecode(implode('#', $urlParts));
-			$schema = $this->schemas[$baseUrl];
-			if ($schema && $fragment == '' || $fragment[0] == '/') {
-				$schema = self::pointerGet($schema, $fragment, $strict);
+			$baseSchema = $this->schemas[$baseUrl];
+			if ($fragment[0] == '/') {
+				$schema = self::pointerGet($baseSchema, $fragment, $strict);
 				$this->add($url, $schema);
 			}
 		}
