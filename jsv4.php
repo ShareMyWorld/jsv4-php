@@ -28,16 +28,21 @@ define('JSV4_ARRAY_LENGTH_LONG', 401);
 define('JSV4_ARRAY_UNIQUE', 402);
 define('JSV4_ARRAY_ADDITIONAL_ITEMS', 403);
 
+/**
+ * Json schema version 4 validator
+ * Supports both objects and associative arrays
+ *
+ */
 class Jsv4 {
 	static public function validate($data, $schema, $associative = FALSE, $options = []) {
 		return new Jsv4($data, $schema, TRUE, $associative, $options);
 	}
-	
+
 	static public function isValid($data, $schema, $associative = FALSE) {
 		$result = new Jsv4($data, $schema, TRUE, $associative);
 		return $result->valid;
 	}
-	
+
 	static public function copyAndValidate($data, $schema, $associative = FALSE, $options = []) {
 		if (!is_scalar($data)) {
 			$data = igbinary_unserialize(igbinary_serialize($data));
@@ -48,7 +53,7 @@ class Jsv4 {
 		}
 		return $result;
 	}
-	
+
 	static public function pointerJoin($parts) {
 		$result = "";
 		foreach ($parts as $part) {
@@ -58,7 +63,7 @@ class Jsv4 {
 		}
 		return $result;
 	}
-	
+
 	static public function recursiveEqual($a, $b) {
 		if ($a === $b) {
 			return TRUE;
@@ -96,7 +101,7 @@ class Jsv4 {
 				}
 			}
 			return TRUE;
-		} 
+		}
 		return FALSE;
 	}
 
@@ -141,9 +146,9 @@ class Jsv4 {
      * @param \stdClass $schema
      * @param boolean $firstErrorOnly
      * @param boolean $associative - Set to TRUE if evaluating associative arrays instead of objects
-     * @param array $options - Addition options for the validator:
+     * @param array $options - Additional options for the validator:
      *                      - 'expandDefault' : If a property is not set, create it with default values if schema has defined the 'default' property
-     *                      - 'removeAdditionalProperties': Remove additional properties instead of reporting an error if schema defines 'additionalProperties' => false
+     *                      - 'removeAdditionalPropertiesByDefault': Remove all additional properties unless the schema defines "additionalProperties": true || { schema }
      */
 	private function __construct(&$data, $schema, $firstErrorOnly=FALSE, $associative=FALSE, $options=[]) {
         // By reference if we have set options that will mutate the array
@@ -178,12 +183,12 @@ class Jsv4 {
 			if (isset($this->schema->enum)) {
 				$this->checkEnum();
 			}
-			
+
 			$this->checkComposite();
 		} catch (Jsv4Error $e) {
 		}
 	}
-	
+
 	private function fail($code, $dataPath, $schemaPath, $errorMessage, $subErrors=NULL) {
 		$this->valid = FALSE;
 		$error = new Jsv4Error($code, $dataPath, $schemaPath, $errorMessage, $subErrors);
@@ -192,11 +197,11 @@ class Jsv4 {
 			throw $error;
 		}
 	}
-	
+
 	private function subResult(&$data, $schema) {
 		return new Jsv4($data, $schema, $this->firstErrorOnly, $this->associative, $this->options);
 	}
-	
+
 	private function includeSubResult($subResult, $dataPrefix, $schemaPrefix) {
 		if (!$subResult->valid) {
 			if (is_array($dataPrefix)) {
@@ -217,7 +222,7 @@ class Jsv4 {
 		if (is_string($types)) {
 			if ($types === $actualType || ($types === 'integer' && is_int($this->data))) {
 				return;
-			} 
+			}
 		} elseif (in_array($actualType, $types)) {
 			return;
 		}
@@ -230,7 +235,7 @@ class Jsv4 {
 		}
 		$this->fail(JSV4_INVALID_TYPE, '', '/type', "Invalid type: $type");
 	}
-	
+
 	private function checkEnum() {
 		foreach ($this->schema->enum as $option) {
 			if (self::recursiveEqual($this->data, $option)) {
@@ -239,12 +244,12 @@ class Jsv4 {
 		}
 		$this->fail(JSV4_ENUM_MISMATCH, '', '/enum', 'Value must be one of the enum options');
 	}
-	
+
 	private function checkObject() {
 		if (isset($this->schema->type)) {
 			$this->checkType('object');
 		}
-		
+
 		if (isset($this->schema->required)) {
 			foreach ($this->schema->required as $index => $key) {
 				if (($this->associative && !array_key_exists($key, $this->data)) || (!$this->associative && !property_exists($this->data, $key))) {
@@ -300,19 +305,15 @@ class Jsv4 {
 				}
 			}
 		}
-		if (isset($this->schema->additionalProperties) && $this->schema->additionalProperties !== TRUE) {
-			$additionalProperties = $this->schema->additionalProperties;
 
-			$isSchema = is_object($additionalProperties);
-			$removeAdditionalProperties = !empty($this->options['removeAdditionalProperties']);
-			foreach ($this->data as $key => &$subValue) {
+        $removeAdditionalProperties = !empty($this->options['removeAdditionalPropertiesByDefault']);
+        $additionalProperties = isset($this->schema->additionalProperties) ? $this->schema->additionalProperties : !$removeAdditionalProperties;
+        if ($additionalProperties === FALSE) {
+            foreach ($this->data as $key => &$subValue) {
 				if (isset($checkedProperties[$key])) {
 					continue;
 				}
-				if ($isSchema) {
-					$subResult = $this->subResult($subValue, $additionalProperties);
-					$this->includeSubResult($subResult, [$key], '/additionalProperties');
-				} elseif ($removeAdditionalProperties) {
+                if ($removeAdditionalProperties) {
                     if ($this->associative) {
                         unset($this->data[$key]);
                     } else {
@@ -320,9 +321,18 @@ class Jsv4 {
                     }
 				} else {
 					$this->fail(JSV4_OBJECT_ADDITIONAL_PROPERTIES, self::pointerJoin([$key]), '/additionalProperties', 'Additional properties not allowed');
-				} 
+				}
+			}
+        } else if (is_object($additionalProperties)) {
+			foreach ($this->data as $key => &$subValue) {
+				if (isset($checkedProperties[$key])) {
+					continue;
+				}
+                $subResult = $this->subResult($subValue, $additionalProperties);
+                $this->includeSubResult($subResult, [$key], '/additionalProperties');
 			}
 		}
+
 		if (isset($this->schema->dependencies)) {
 			foreach ($this->schema->dependencies as $key => $dep) {
 				if (($this->associative && !array_key_exists($key, $this->data)) || (!$this->associative && !property_exists($this->data, $key))) {
@@ -344,9 +354,9 @@ class Jsv4 {
 				}
 			}
 		}
-		
+
 	}
-	
+
 	private function checkArray() {
         $counter = 0;
         $actuallyAssociative = FALSE;
@@ -416,7 +426,7 @@ class Jsv4 {
             }
         }
 	}
-	
+
 	private function checkString() {
 		if (isset($this->schema->type)) {
 			$this->checkType('string');
@@ -471,7 +481,7 @@ class Jsv4 {
 			}
 		}
 	}
-	
+
 	private function checkComposite() {
 		if (isset($this->schema->allOf)) {
 			foreach ($this->schema->allOf as $index => $subSchema) {
@@ -520,7 +530,7 @@ class Jsv4 {
 			}
 		}
 	}
-	
+
 	private function createValueForProperty($key) {
 		$schema = NULL;
 		if (isset($this->schema->properties->$key)) {
@@ -551,7 +561,7 @@ class Jsv4 {
                         $this->data->$key = igbinary_unserialize(igbinary_serialize($schema->default));
                     }
 				}
-				
+
 				return TRUE;
 			}
 		}
@@ -590,7 +600,7 @@ class Jsv4Error extends Exception {
 			$this->subResults = $subResults;
 		}
 	}
-	
+
 	public function prefix($dataPrefix, $schemaPrefix) {
 		return new Jsv4Error($this->code, $dataPrefix.$this->dataPath, $schemaPrefix.$this->schemaPath, $this->message);
 	}
