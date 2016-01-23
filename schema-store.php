@@ -30,7 +30,7 @@ class SchemaStore {
 		}
 		return $value;
 	}
-	
+
 	private static function resolveUrl($base, $relative) {
 		if (parse_url($relative, PHP_URL_SCHEME) != '') {
 			// It's already absolute
@@ -70,7 +70,7 @@ class SchemaStore {
 				$baseParts['path'] = "/".$baseParts['path'];
 			}
 		}
-		
+
 		$result = "";
 		if (isset($baseParts['scheme'])) {
 			$result .= $baseParts['scheme']."://";
@@ -106,7 +106,15 @@ class SchemaStore {
     public function getLoadedSchemas() {
         return $this->schemas;
     }
-	
+
+    public function getMissingFullUrls() {
+        $fullUrls = [];
+        foreach ($this->refs as $fullUrlToRefs) {
+            $fullUrls = array_merge($fullUrls, array_keys($fullUrlToRefs));
+        }
+        return array_unique($fullUrls);
+    }
+
 	public function add($url, $schema, $trusted = FALSE, $normalized = FALSE) {
 		$urlParts = explode("#", $url);
 		$baseUrl = array_shift($urlParts);
@@ -127,10 +135,13 @@ class SchemaStore {
 		}
 		if (isset($this->refs[$baseUrl])) {
 			foreach ($this->refs[$baseUrl] as $fullUrl => $refSchemas) {
-				foreach ($refSchemas as &$refSchema) {
-					$refSchema = $this->get($fullUrl);
-				}
-				unset($this->refs[$baseUrl][$fullUrl]);
+                $subSchema = $this->get($fullUrl);
+                if ($subSchema) {
+                    foreach ($refSchemas as &$refSchema) {
+                        $refSchema = $subSchema;
+                    }
+                    unset($this->refs[$baseUrl][$fullUrl]);
+                }
 			}
 			if (empty($this->refs[$baseUrl])) {
 				unset($this->refs[$baseUrl]);
@@ -146,7 +157,7 @@ class SchemaStore {
 	public function addNormalizedSchema($url, $schema) {
 		$this->add($url, $schema, TRUE, TRUE);
 	}
-	
+
 	private function normalizeSchema($url, &$schema, $trustPrefix = '') {
 		if (is_object($schema)) {
 			if (isset($schema->{'$ref'})) {
@@ -177,7 +188,7 @@ class SchemaStore {
 			}
 		}
 	}
-	
+
 	public function get($url, $strict = FALSE) {
 		if (isset($this->schemas[$url])) {
 			return $this->schemas[$url];
@@ -185,11 +196,11 @@ class SchemaStore {
 		$urlParts = explode('#', $url);
 		$baseUrl = array_shift($urlParts);
 		$schema = NULL;
-		
+
 		if (isset($this->schemas[$baseUrl])) {
             $fragment = urldecode(implode('#', $urlParts));
 			$baseSchema = $this->schemas[$baseUrl];
-			if ($fragment[0] == '/') {
+			if (($baseSchema && $fragment == '') || $fragment[0] == '/') {
 				$schema = self::pointerGet($baseSchema, $fragment, $strict);
 				$this->add($url, $schema);
 			}
@@ -198,7 +209,7 @@ class SchemaStore {
 		if (empty($schema) && $strict) {
 			throw new Exception("Schema not found: $url");
 		}
-		
+
 		return $schema;
 	}
 
