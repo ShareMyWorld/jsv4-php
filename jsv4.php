@@ -298,8 +298,7 @@ class Jsv4 {
 		if (isset($this->schema->required)) {
 			foreach ($this->schema->required as $index => $key) {
 				if (($this->associative && !array_key_exists($key, $this->data)) || (!$this->associative && !property_exists($this->data, $key))) {
-					if (!empty($this->options[self::OPTION_EXPAND_DEFAULT])) {
-                        $this->createValueForProperty($key);
+					if (!empty($this->options[self::OPTION_EXPAND_DEFAULT]) &&  $this->createValueForProperty($key)) {
 						continue;
 					}
 					$this->fail(self::JSV4_OBJECT_REQUIRED, '', "/required/{$index}", "Missing required property: {$key}");
