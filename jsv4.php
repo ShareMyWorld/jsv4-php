@@ -169,7 +169,7 @@ class Jsv4 {
      *                      - 'banUnknownProperties': Ban all additional properties not defined in "properties" of the schema or any schema defined in "anyOf", "allOf", "oneOf"
      *                                                   Can be set to either 'error' or 'remove' if you want an error thrown or if you want them silently removed.
      */
-	private function __construct(&$data, $schema, $firstErrorOnly=FALSE, $associative=FALSE, $options=[], &$uncheckedProperties = NULL, $compositeSchema = FALSE) {
+	public function __construct(&$data, $schema, $firstErrorOnly=FALSE, $associative=FALSE, $options=[], &$uncheckedProperties = NULL, $compositeSchema = FALSE) {
         // By reference if we have set options that will mutate the array
 		$this->data =& $data;
 		$this->schema = $schema;
