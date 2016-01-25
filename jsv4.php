@@ -40,7 +40,7 @@ class Jsv4 {
     const JSV4_UNKNOWN_PROPERTY = 1000; // To mimic tv4.js
 
     const OPTION_EXPAND_DEFAULT = 'expandDefault';
-    const OPTION_BAN_ADDITIONAL_PROPERTIES = 'banAdditionalProperties';
+    const OPTION_BAN_ADDITIONAL_PROPERTIES = 'banUnknownProperties';
 
 	static public function validate($data, $schema, $associative = FALSE, $options = []) {
 		return new Jsv4($data, $schema, TRUE, $associative, $options);
@@ -166,7 +166,7 @@ class Jsv4 {
      * @param boolean $associative - Set to TRUE if evaluating associative arrays instead of objects
      * @param array $options - Additional options for the validator:
      *                      - 'expandDefault' : If a property is not set, create it with default values if schema has defined the 'default' property
-     *                      - 'banAdditionalProperties': Ban all additional properties not defined in "properties" of the schema or any schema defined in "anyOf", "allOf", "oneOf"
+     *                      - 'banUnknownProperties': Ban all additional properties not defined in "properties" of the schema or any schema defined in "anyOf", "allOf", "oneOf"
      *                                                   Can be set to either 'error' or 'remove' if you want an error thrown or if you want them silently removed.
      */
 	private function __construct(&$data, $schema, $firstErrorOnly=FALSE, $associative=FALSE, $options=[], &$uncheckedProperties = NULL, $compositeSchema = FALSE) {
@@ -285,9 +285,9 @@ class Jsv4 {
 		if (isset($this->schema->type)) {
 			$this->checkType('object');
 		}
-        $banAdditionalProperties = isset($this->options[self::OPTION_BAN_ADDITIONAL_PROPERTIES]);
+        $banUnknownProperties = isset($this->options[self::OPTION_BAN_ADDITIONAL_PROPERTIES]);
 
-        if ($banAdditionalProperties && $this->uncheckedProperties === NULL) {
+        if ($banUnknownProperties && $this->uncheckedProperties === NULL) {
             // This is the "primary" schema so lets setup all unchecked properties
             $this->uncheckedProperties = [];
             foreach ($this->data as $property => $value) {
@@ -302,7 +302,7 @@ class Jsv4 {
 						continue;
 					}
 					$this->fail(self::JSV4_OBJECT_REQUIRED, '', "/required/{$index}", "Missing required property: {$key}");
-				} else if ($banAdditionalProperties) {
+				} else if ($banUnknownProperties) {
                     unset($this->uncheckedProperties[$key]);
                 }
 			}
@@ -337,7 +337,7 @@ class Jsv4 {
                         $this->includeSubResult($subResult, [$key], ['properties', $key]);
                     }
                 }
-                if ($banAdditionalProperties) {
+                if ($banUnknownProperties) {
                     unset($this->uncheckedProperties[$key]);
                 }
 			}
@@ -351,7 +351,7 @@ class Jsv4 {
                         $subResult = $this->subResult($this->associative ? $this->data[$key] : $this->data->$key, $subSchema);
 						$this->includeSubResult($subResult, [$key], ['patternProperties', $pattern]);
 
-                        if ($banAdditionalProperties) {
+                        if ($banUnknownProperties) {
                             unset($this->uncheckedProperties[$key]);
                         }
 					}
@@ -376,7 +376,7 @@ class Jsv4 {
                 $subResult = $this->subResult($subValue, $additionalProperties);
                 $this->includeSubResult($subResult, [$key], '/additionalProperties');
 
-                if ($banAdditionalProperties) {
+                if ($banUnknownProperties) {
                     unset($this->uncheckedProperties[$key]);
                 }
 			}
@@ -394,14 +394,14 @@ class Jsv4 {
 					foreach ($dep as $index => $depKey) {
                         if (($this->associative && !array_key_exists($depKey, $this->data)) || (!$this->associative && !property_exists($this->data, $depKey))) {
 							$this->fail(self::JSV4_OBJECT_DEPENDENCY_KEY, '', self::pointerJoin(['dependencies', $key, $index]), "Property $key depends on $depKey");
-						} elseif ($banAdditionalProperties) {
+						} elseif ($banUnknownProperties) {
                             unset($this->uncheckedProperties[$depKey]);
                         }
 					}
 				} else {
 					if (($this->associative && !array_key_exists($dep, $this->data)) || (!$this->associative && !property_exists($this->data, $dep))) {
 						$this->fail(self::JSV4_OBJECT_DEPENDENCY_KEY, '', self::pointerJoin(['dependencies', $key]), "Property $key depends on $dep");
-					} elseif ($banAdditionalProperties) {
+					} elseif ($banUnknownProperties) {
                         unset($this->uncheckedProperties[$dep]);
                     }
 				}
