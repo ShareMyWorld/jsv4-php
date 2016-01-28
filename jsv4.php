@@ -605,8 +605,8 @@ class Jsv4 {
 			$schema = $this->schema->additionalProperties;
 		}
 		if ($schema) {
-			if (isset($schema->default)) {
-				if (is_scalar($schema->default)) {
+			if (property_exists($schema, 'default')) {
+				if ($schema->default === NULL || is_scalar($schema->default)) {
                     if ($this->associative) {
                         $this->data[$key] = $schema->default;
                     } else {
