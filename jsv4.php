@@ -195,11 +195,13 @@ class Jsv4 {
 				if (isset($this->schema->type)) {
 					$this->checkType('boolean');
 				}
-			} else {
+			} elseif ($this->data === NULL) {
 				if (isset($this->schema->type)) {
 					$this->checkType('null');
 				}
-			}
+			} else {
+                $this->fail(self::JSV4_INVALID_TYPE, '', '', 'Unknown type');
+            }
 
 			if (isset($this->schema->enum)) {
 				$this->checkEnum();
@@ -388,7 +390,7 @@ class Jsv4 {
 					continue;
 				}
 				if (is_object($dep)) {
-					$subResult = $this->subResult($this->data, $dep);
+					$subResult = $this->subResult($this->data, $dep, $this->uncheckedProperties, TRUE);
 					$this->includeSubResult($subResult, '', ['dependencies', $key]);
 				} elseif (is_array($dep)) {
 					foreach ($dep as $index => $depKey) {
