@@ -178,7 +178,7 @@ class Jsv4 {
 		$this->options = $options;
 		$this->valid = TRUE;
 		$this->errors = [];
-        $this->uncheckedProperties &= $uncheckedProperties;
+        $this->uncheckedProperties =& $uncheckedProperties;
         $this->compositeSchema = $compositeSchema;
 
 		try {
@@ -542,6 +542,9 @@ class Jsv4 {
 			foreach ($this->schema->allOf as $index => $subSchema) {
 				$subResult = $this->subResult($this->data, $subSchema, $this->uncheckedProperties, TRUE);
 				$this->includeSubResult($subResult, '', "/allOf/$index");
+                if (!$this->valid) {
+                    throw $this->errors[0];
+                }
 			}
 		}
 		if (isset($this->schema->anyOf)) {
@@ -552,7 +555,7 @@ class Jsv4 {
 				$subResult = $this->subResult($this->data, $subSchema, $subUnchecked, TRUE);
 				if ($subResult->valid) {
 					$foundValid = TRUE;
-                    $this->uncheckedProperties &= $subUnchecked;
+                    $this->uncheckedProperties = $subUnchecked;
 					break;
 				}
 				$failResults[] = $subResult;
@@ -570,7 +573,7 @@ class Jsv4 {
 				if ($subResult->valid) {
 					if ($successIndex === NULL) {
 						$successIndex = $index;
-                        $this->uncheckedProperties &= $subUnchecked;
+                        $this->uncheckedProperties = $subUnchecked;
 					} else {
 						$this->fail(self::JSV4_ONE_OF_MULTIPLE, '', '/oneOf', "Value satisfies more than one of the options ($successIndex and $index)");
 					}
