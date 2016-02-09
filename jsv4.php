@@ -497,9 +497,11 @@ class Jsv4 {
 			}
 		}
 		if (isset($this->schema->pattern)) {
-			$pattern = $this->schema->pattern;
+            // convert ecmascript dialect unicode char points to a a format that PCRE understands
+            $pattern = preg_replace('/\\\\u(\d{4})/', '\x{$1}', $this->schema->pattern);
 			$patternFlags = isset($this->schema->patternFlags) ? $this->schema->patternFlags : '';
-			$result = preg_match("/".str_replace("/", "\\/", $pattern)."/".$patternFlags, $this->data);
+
+			$result = preg_match("/".str_replace("/", "\\/", $pattern)."/u".$patternFlags, $this->data);
 			if ($result === 0) {
 				$this->fail(self::JSV4_STRING_PATTERN, '', '/pattern', "String does not match pattern: $pattern");
 			}
