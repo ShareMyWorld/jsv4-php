@@ -310,6 +310,14 @@ class Jsv4 {
 			}
 		}
 
+        if ($banUnknownProperties && isset($this->schema->optional)) {
+            foreach ($this->schema->optional as $key) {
+                if (($this->associative && array_key_exists($key, $this->data)) || (!$this->associative && property_exists($this->data, $key))) {
+                    unset($this->uncheckedProperties[$key]);
+                }
+            }
+        }
+
 		if (isset($this->schema->minProperties) || isset($this->schema->maxProperties)) {
             if ($this->associative) {
                 $propCount = count($this->data);
