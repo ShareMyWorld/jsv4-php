@@ -381,7 +381,7 @@ class Jsv4 {
 					$this->fail(self::JSV4_OBJECT_ADDITIONAL_PROPERTIES, self::pointerJoin([$key]), '/additionalProperties', 'Additional properties not allowed');
 				}
 			}
-        } else if (is_object($additionalProperties)) {
+        } elseif (is_object($additionalProperties)) {
 			foreach ($this->data as $key => &$subValue) {
 				if (isset($checkedProperties[$key])) {
 					continue;
@@ -393,7 +393,9 @@ class Jsv4 {
                     unset($this->uncheckedProperties[$key]);
                 }
 			}
-		}
+		} elseif ($banUnknownProperties) {
+            $this->uncheckedProperties = [];
+        }
 
 		if (isset($this->schema->dependencies)) {
 			foreach ($this->schema->dependencies as $key => $dep) {
