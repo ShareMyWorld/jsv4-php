@@ -38,9 +38,11 @@ class Jsv4 {
     const JSV4_ARRAY_ADDITIONAL_ITEMS = 403;
 
     const JSV4_UNKNOWN_PROPERTY = 1000; // To mimic tv4.js
+    const JSV4_STRING_EMPTY = 1001;
 
     const OPTION_EXPAND_DEFAULT = 'expandDefault';
-    const OPTION_BAN_ADDITIONAL_PROPERTIES = 'banUnknownProperties';
+    const OPTION_BAN_UNKNOWN_PROPERTIES = 'banUnknownProperties';
+    const OPTION_BAN_EMPTY_STRINGS = 'banEmptyStrings';
 
 	static public function validate($data, $schema, $associative = FALSE, $options = []) {
 		return new Jsv4($data, $schema, TRUE, $associative, $options);
@@ -166,8 +168,9 @@ class Jsv4 {
      * @param boolean $associative - Set to TRUE if evaluating associative arrays instead of objects
      * @param array $options - Additional options for the validator:
      *                      - 'expandDefault' : If a property is not set, create it with default values if schema has defined the 'default' property
-     *                      - 'banUnknownProperties': Ban all additional properties not defined in "properties" of the schema or any schema defined in "anyOf", "allOf", "oneOf"
+     *                      - 'banUnknownProperties': Ban all unknown properties not defined in "properties" of the schema or any schema defined in "anyOf", "allOf", "oneOf"
      *                                                   Can be set to either 'error' or 'remove' if you want an error thrown or if you want them silently removed.
+     *                      - 'banEmptyStrings': Throw an error if any string is empty
      */
 	public function __construct(&$data, $schema, $firstErrorOnly=FALSE, $associative=FALSE, $options=[], &$uncheckedProperties = NULL, $compositeSchema = FALSE) {
         // By reference if we have set options that will mutate the array
@@ -209,8 +212,8 @@ class Jsv4 {
 
 			$this->checkComposite();
 
-            if (!$compositeSchema && !empty($this->uncheckedProperties) && isset($options[self::OPTION_BAN_ADDITIONAL_PROPERTIES])) {
-                if ($options[self::OPTION_BAN_ADDITIONAL_PROPERTIES] === 'remove') {
+            if (!$compositeSchema && !empty($this->uncheckedProperties) && isset($options[self::OPTION_BAN_UNKNOWN_PROPERTIES])) {
+                if ($options[self::OPTION_BAN_UNKNOWN_PROPERTIES] === 'remove') {
                     foreach ($this->uncheckedProperties as $key => $dummy) {
                         if ($this->associative) {
                             unset($this->data[$key]);
@@ -287,7 +290,7 @@ class Jsv4 {
 		if (isset($this->schema->type)) {
 			$this->checkType('object');
 		}
-        $banUnknownProperties = isset($this->options[self::OPTION_BAN_ADDITIONAL_PROPERTIES]);
+        $banUnknownProperties = isset($this->options[self::OPTION_BAN_UNKNOWN_PROPERTIES]);
 
         if ($banUnknownProperties && $this->uncheckedProperties === NULL) {
             // This is the "primary" schema so lets setup all unchecked properties
@@ -494,6 +497,9 @@ class Jsv4 {
 		if (isset($this->schema->type)) {
 			$this->checkType('string');
 		}
+        if (empty($this->data) && !empty($this->options[self::OPTION_BAN_EMPTY_STRINGS])) {
+            $this->fail(self::JSV4_STRING_EMPTY, '', '', 'String cannot be empty');
+        }
 		if (isset($this->schema->minLength)) {
 			if (mb_strlen($this->data) < $this->schema->minLength) {
 				$this->fail(self::JSV4_STRING_LENGTH_SHORT, '', '/minLength', "String must be at least {$this->schema->minLength} characters long");
