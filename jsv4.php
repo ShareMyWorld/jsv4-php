@@ -222,7 +222,7 @@ class Jsv4 {
                         }
                     }
                 } else {
-                    $this->fail(self::JSV4_UNKNOWN_PROPERTY, '', '', 'Unknown properties not defined in schema: ' . implode(', ', $this->uncheckedProperties));
+                    $this->fail(self::JSV4_UNKNOWN_PROPERTY, '', '', 'Unknown properties not defined in schema: ' . implode(', ', array_keys($this->uncheckedProperties)));
                 }
             }
 		} catch (Jsv4Error $e) {
