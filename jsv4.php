@@ -44,6 +44,10 @@ class Jsv4 {
     const OPTION_BAN_UNKNOWN_PROPERTIES = 'banUnknownProperties';
     const OPTION_BAN_EMPTY_STRINGS = 'banEmptyStrings';
 
+    const BAN_EMPTY_STRINGS_OPT_CONVERT_TO_NULL = 'convertToNull';
+    const BAN_EMPTY_STRINGS_OPT_REMOVE = 'remove';
+    const BAN_EMPTY_STRINGS_OPT_ERROR = 'error';
+
 	static public function validate($data, $schema, $associative = FALSE, $options = []) {
 		return new Jsv4($data, $schema, TRUE, $associative, $options);
 	}
@@ -170,7 +174,7 @@ class Jsv4 {
      *                      - 'expandDefault' : If a property is not set, create it with default values if schema has defined the 'default' property
      *                      - 'banUnknownProperties': Ban all unknown properties not defined in "properties" of the schema or any schema defined in "anyOf", "allOf", "oneOf"
      *                                                   Can be set to either 'error' or 'remove' if you want an error thrown or if you want them silently removed.
-     *                      - 'banEmptyStrings': Throw an error if any string is empty
+     *                      - 'banEmptyStrings': Can be one of 'error', 'convertToNull', 'remove'.
      */
 	public function __construct(&$data, $schema, $firstErrorOnly=FALSE, $associative=FALSE, $options=[], &$uncheckedProperties = NULL, $compositeSchema = FALSE) {
         // By reference if we have set options that will mutate the array
@@ -187,8 +191,14 @@ class Jsv4 {
 		try {
 
 			if (is_array($this->data)) {
+                if (!$compositeSchema && isset($options[self::OPTION_BAN_EMPTY_STRINGS])) {
+                    $this->checkEmptyStrings(FALSE);
+                }
 				$this->checkArray();
             } elseif (is_object($this->data)) {
+                if (!$compositeSchema && isset($options[self::OPTION_BAN_EMPTY_STRINGS])) {
+                    $this->checkEmptyStrings(TRUE);
+                }
 				$this->checkObject();
 			} elseif (is_string($this->data)) {
 				$this->checkString();
@@ -258,6 +268,35 @@ class Jsv4 {
 		}
 	}
 
+    private function checkEmptyStrings($isObject) {
+        foreach ($this->data as $key => $value) {
+            if ($value === '') {
+                switch ($this->options[self::OPTION_BAN_EMPTY_STRINGS]) {
+                    case self::BAN_EMPTY_STRINGS_OPT_CONVERT_TO_NULL:
+                        if ($isObject) {
+                            $this->data->$key = NULL;
+                        } else {
+                            $this->data[$key] = NULL;
+                        }
+                        break;
+
+                    case self::BAN_EMPTY_STRINGS_OPT_REMOVE:
+                        if ($isObject) {
+                            unset($this->data->$key);
+                        } else {
+                            unset($this->data[$key]);
+                        }
+                        break;
+
+                    case self::BAN_EMPTY_STRINGS_OPT_ERROR:
+                        $this->fail(self::JSV4_STRING_EMPTY, self::pointerJoin([$key]), '', 'String cannot be empty');
+                        break;
+                
+                }
+            }
+        }
+    }
+
 	private function checkType($actualType) {
 		$types = $this->schema->type;
 		if (is_string($types)) {
@@ -266,7 +305,9 @@ class Jsv4 {
 			}
 		} elseif (in_array($actualType, $types)) {
 			return;
-		}
+		} elseif (is_int($this->data) && in_array('integer', $types)) {
+            return;
+        }
 
 		$type = gettype($this->data);
 		if ($type === 'double') {
