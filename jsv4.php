@@ -48,6 +48,9 @@ class Jsv4 {
     const BAN_EMPTY_STRINGS_OPT_REMOVE = 'remove';
     const BAN_EMPTY_STRINGS_OPT_ERROR = 'error';
 
+    const BAN_UNKNOWN_PROPERTIES_OPT_REMOVE = 'remove';
+    const BAN_UNKNOWN_PROPERTIES_OPT_ERROR = 'error';
+
 	static public function validate($data, $schema, $associative = FALSE, $options = []) {
 		return new Jsv4($data, $schema, TRUE, $associative, $options);
 	}
@@ -223,7 +226,7 @@ class Jsv4 {
 			$this->checkComposite();
 
             if (!$compositeSchema && !empty($this->uncheckedProperties) && isset($options[self::OPTION_BAN_UNKNOWN_PROPERTIES])) {
-                if ($options[self::OPTION_BAN_UNKNOWN_PROPERTIES] === 'remove') {
+                if ($options[self::OPTION_BAN_UNKNOWN_PROPERTIES] === self::BAN_UNKNOWN_PROPERTIES_OPT_REMOVE) {
                     foreach ($this->uncheckedProperties as $key => $dummy) {
                         if ($this->associative) {
                             unset($this->data[$key]);
