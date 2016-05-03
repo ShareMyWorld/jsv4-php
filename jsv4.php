@@ -51,7 +51,7 @@ class Jsv4 {
     const BAN_UNKNOWN_PROPERTIES_OPT_REMOVE = 'remove';
     const BAN_UNKNOWN_PROPERTIES_OPT_ERROR = 'error';
 
-	static public function validate($data, $schema, $associative = FALSE, $options = []) {
+	static public function validate(&$data, $schema, $associative = FALSE, $options = []) {
 		return new Jsv4($data, $schema, TRUE, $associative, $options);
 	}
 
