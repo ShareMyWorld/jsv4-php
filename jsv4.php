@@ -416,7 +416,7 @@ class Jsv4 {
 			}
 		}
 
-        $additionalProperties = isset($this->schema->additionalProperties) ? $this->schema->additionalProperties : TRUE;
+        $additionalProperties = isset($this->schema->additionalProperties) ? $this->schema->additionalProperties : NULL;
         if ($additionalProperties === FALSE) {
             foreach ($this->data as $key => &$subValue) {
 				if (isset($checkedProperties[$key])) {
@@ -437,7 +437,7 @@ class Jsv4 {
                     unset($this->uncheckedProperties[$key]);
                 }
 			}
-		} elseif ($banUnknownProperties) {
+		} elseif ($additionalProperties === TRUE && $banUnknownProperties) {
             $this->uncheckedProperties = [];
         }
 
