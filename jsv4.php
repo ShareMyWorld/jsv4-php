@@ -405,7 +405,11 @@ class Jsv4 {
 				foreach ($this->data as $key => $subValue) {
 					if (preg_match($finalPattern, $key)) {
 						$checkedProperties[$key] = TRUE;
-                        $subResult = $this->subResult($this->associative ? $this->data[$key] : $this->data->$key, $subSchema);
+                        if ($this->associative) {
+                            $subResult = $this->subResult($this->data[$key], $subSchema);
+                        } else {
+                            $subResult = $this->subResult($this->data->$key, $subSchema);
+                        }
 						$this->includeSubResult($subResult, [$key], ['patternProperties', $pattern]);
 
                         if ($banUnknownProperties) {
