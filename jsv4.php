@@ -719,6 +719,11 @@ class Jsv4Error extends Exception {
      */
 	public $message;
 
+    /**
+     * @var array|null
+     */
+    public $subResults;
+
 	public function __construct($code, $dataPath, $schemaPath, $errorMessage, $subResults=NULL) {
 		parent::__construct($errorMessage);
 		$this->code = $code;
