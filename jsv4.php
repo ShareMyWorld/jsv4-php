@@ -730,13 +730,11 @@ class Jsv4Error extends Exception {
 		$this->dataPath = $dataPath;
 		$this->schemaPath = $schemaPath;
 		$this->message = $errorMessage;
-		if ($subResults) {
-			$this->subResults = $subResults;
-		}
+        $this->subResults = $subResults;
 	}
 
 	public function prefix($dataPrefix, $schemaPrefix) {
-		return new Jsv4Error($this->code, $dataPrefix.$this->dataPath, $schemaPrefix.$this->schemaPath, $this->message);
+		return new Jsv4Error($this->code, $dataPrefix.$this->dataPath, $schemaPrefix.$this->schemaPath, $this->message, $this->subResults);
 	}
 }
 
