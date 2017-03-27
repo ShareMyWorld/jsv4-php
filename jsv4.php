@@ -547,7 +547,7 @@ class Jsv4 {
 		if (isset($this->schema->type)) {
 			$this->checkType('string');
 		}
-        if (empty($this->data) && !empty($this->options[self::OPTION_BAN_EMPTY_STRINGS])) {
+        if ($this->data === '' && !empty($this->options[self::OPTION_BAN_EMPTY_STRINGS])) {
             $this->fail(self::JSV4_STRING_EMPTY, '', '', 'String cannot be empty');
         }
 		if (isset($this->schema->minLength)) {
